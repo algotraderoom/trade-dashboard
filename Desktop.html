@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#0a0e1a">
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard 2026</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0e1a;
+            color: #e5e7eb;
+        }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(31, 41, 55, 0.5);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            /*max-width: 120px;*/
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+            transform-origin: center;
+        }
+
+        .calendar-day:hover {
+            transform: scale(1.03);
+            z-index: 5;
+        }
+        .trade-row:hover {
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Heatmap colors */
+        .heat-high-pos { background: #059669; color: white; }
+        .heat-med-pos { background: #10b981; color: white; }
+        .heat-low-pos { background: #34d399; color: #064e3b; }
+        .heat-zero { background: #374151; color: #9ca3af; }
+        .heat-low-neg { background: #f87171; color: #7f1d1d; }
+        .heat-med-neg { background: #ef4444; color: white; }
+        .heat-high-neg { background: #dc2626; color: white; }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.1);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .month-slide-left {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+
+        .month-slide-right {
+            transform: translateX(20px);
+            opacity: 0;
+        }
+
+        .month-active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .heatmap-fade {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .heatmap-show {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .sidebar-collapsed .sidebar-content {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .sidebar-collapsed {
+            width: 0 !important;
+            overflow: hidden;
+        }
+
+        .toggle-shift {
+            left: 0 !important;
+        }
+
+        #digital-clock{
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            z-index: 9999;
+
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
+
+            color: #00ffcc;
+
+            padding: 6px 14px;
+            border-radius: 10px;
+
+            font-family: "Courier New", monospace;
+
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        #holiday-banner{
+            position: fixed;
+            top: 50px;   /* below clock */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Mobile */
+        @media (max-width: 768px){
+            #digital-clock{
+                top: 5px;
+                font-size: 16px;
+                padding: 6px 10px;
+            }
+        }
+
+        .hours-minutes {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .seconds {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        #holiday-banner{
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            padding: 4px 12px;
+
+            background: rgba(255,193,7,.15);
+            border: 1px solid rgba(255,193,7,.3);
+
+            color: #ffd54f;
+            border-radius: 20px;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            backdrop-filter: blur(8px);
+
+            z-index: 9999;
+        }
+    </style>
+<!--base target="_blank"-->
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="glass-panel border-b border-gray-800 h-16 flex items-center justify-between px-6 shrink-0">
+        <div class="flex items-center w-full">
+
+            <!-- LEFT: icon + title -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold">
+                    <div>
+                        Trade<span class="gradient-text">Analytics</span>
+                    </div>
+                    <div class="text-gray-500 text-sm font-normal">
+                        The Algo Trade Room
+                    </div>
+                </h1>
+            </div>
+            
+            <div id="digital-clock">
+                <span class="hours-minutes">00:00</span>
+                <span class="seconds">00</span>
+            </div>
+            <div id="holiday-banner"></div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <a href="Mobile.html" title="Switch to Mobile View" class="device-switch">
+                📱
+            </a>
+            <select id="monthSelect" class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500">
+                <option value="Jan">January</option>
+                <option value="Feb">February</option>
+                <option value="Mar">March</option>
+                <option value="Apr">April</option>
+                <option value="May">May</option>
+                <option value="Jun">June</option>
+                <option value="Jul">July</option>
+                <option value="Aug">August</option>
+                <option value="Sep">September</option>
+                <option value="Oct">October</option>
+                <option value="Nov">November</option>
+                <option value="Dec">December</option>
+            </select>
+            <select id="capitalMode"
+                class="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                onchange="reloadWithCapitalMode()">
+
+                <option value="TOTAL">Total Cap</option>
+                <option value="COMPOUND">Compounding Cap</option>
+
+            </select>
+            <button onclick="loadData()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                <svg id="refreshIcon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebarWrapper" class="flex transition-all duration-300 ease-in-out">
+            <aside id="sidebar"
+                class="w-80 transition-all duration-300 ease-in-out
+                       glass-panel border-r border-gray-800
+                       overflow-y-auto scrollbar-hide">
+                <div class="p-4 space-y-6 sidebar-content">
+                    
+                    <!-- Month Summary -->
+                    <div>
+                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Month Summary</h3>
+                        <div class="space-y-3">
+                            <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                                <div class="text-xs text-gray-400 mb-1">Net P&L</div>
+                                <div class="text-2xl font-bold font-mono" id="sum-final-pnl">--</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                                    <div class="text-xs text-gray-400 mb-1">Win Rate</div>
+                                    <div class="text-lg font-bold font-mono text-green-400" id="sum-win-rate">--</div>
+                                </div>
+                                <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                                    <div class="text-xs text-gray-400 mb-1">Total Trades</div>
+                                    <div class="text-lg font-bold font-mono" id="sum-total-trades">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Index Performance -->
+                    <div>
+                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Index Performance</h3>
+                        <div id="index-list" class="space-y-2">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Charges Impact -->
+                    <div>
+                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Charges Impact</h3>
+                        <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-xs text-gray-400">Total Charges</span>
+                                <span class="font-mono text-red-400" id="sum-charges">--</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-2">
+                                <div id="charges-bar" class="bg-red-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1" id="charges-percent">--% of gross P&L</div>
+                        </div>
+                    </div>
+
+                    <!-- Best/Worst Day -->
+                    <div>
+                        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Extremes</h3>
+                        <div class="space-y-2">
+                            <div class="bg-green-900/30 border border-green-700/50 rounded-lg p-3">
+                                <div class="text-xs text-green-400 mb-1">Best Day</div>
+                                <div class="font-mono font-bold" id="best-day-pnl">--</div>
+                                <div class="text-xs text-gray-400" id="best-day-date">--</div>
+                            </div>
+                            <div class="bg-red-900/30 border border-red-700/50 rounded-lg p-3">
+                                <div class="text-xs text-red-400 mb-1">Worst Day</div>
+                                <div class="font-mono font-bold" id="worst-day-pnl">--</div>
+                                <div class="text-xs text-gray-400" id="worst-day-date">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Toggle Button -->
+            <div onclick="toggleSidebar()"
+                 class="flex items-center justify-center
+                        w-6
+                        cursor-pointer
+                        bg-transparent
+                        border-r border-gray-700
+                        transition-all duration-300">
+
+                <span id="toggleIcon" class="text-gray-400 text-xs select-none">◀</span>
+            </div>
+        </div>
+        
+
+        <!-- Main Dashboard -->
+        
+        <main class="flex-1 min-w-0 overflow-y-auto scrollbar-hide p-6">            
+            <!-- View Toggle -->
+            <div class="flex gap-2 mb-6">
+                <button onclick="switchView('calendar')" id="btn-calendar" class="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white transition-colors">Calendar View</button>
+                <button onclick="switchView('trades')" id="btn-trades" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">Trade Log</button>
+                <button onclick="switchView('analytics')" id="btn-analytics" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors">Analytics</button>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="view-calendar" class="space-y-6">
+                <div class="flex items-center gap-6 mb-4">
+
+                    <!-- Index -->
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-400">Index:</label>
+                        <select id="calendarIndexFilter"
+                            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                            onchange="updateCalendar()">
+                            <option value="ALL">All Indices</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-xl p-6 border border-gray-800">
+
+                    <!-- Header -->
+                    <div class="grid grid-cols-3 items-center mb-4">
+
+                        <!-- Left -->
+                        <h2 class="text-lg font-semibold text-left">
+                            Daily P&L Heatmap
+                        </h2>
+
+                        <!-- Center (Month + Year + Arrows) -->
+                        <div class="flex items-center justify-center gap-4">
+
+                            <!-- Prev -->
+                            <button onclick="changeMonth(-1)" 
+                                class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">
+                                ◀
+                            </button>
+
+                            <!-- Month Display -->
+                            <h2 id="heatmapMonth"
+                                class="text-lg font-bold text-center tracking-wider
+                                       transition-all duration-300 ease-in-out
+                                       bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400
+                                       bg-clip-text text-transparent">
+                            </h2>
+
+                            <!-- Next -->
+                            <button onclick="changeMonth(1)" 
+                                class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">
+                                ▶
+                            </button>
+
+                        </div>
+
+                        <!-- Right Legend -->
+                        <div class="flex justify-end gap-4 text-xs">
+                            <span class="flex items-center gap-1">
+                                <span class="w-3 h-3 rounded bg-green-600 shadow-md shadow-green-600/40"></span>
+                                High Profit
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="w-3 h-3 rounded bg-red-600 shadow-md shadow-red-600/40"></span>
+                                High Loss
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <!-- Calendar -->
+                    <!--div id="calendar-grid" class="grid grid-cols-7 gap-2"-->
+                    <div class="flex justify-center">
+                        <div class="max-w-[900px] w-full">
+                            <div id="calendar-grid" class="grid grid-cols-7 gap-3">
+                                <!-- JS content -->
+                            </div>
+                        </div>
+                    </div>
+                        <!-- Calendar generated by JS -->
+                    </div>
+
+                </div>
+
+                <!-- Day Detail Panel (shown when day selected) -->
+                <div id="day-detail" class="glass-panel rounded-xl p-6 border border-gray-800 hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-lg font-semibold" id="selected-date">--</h3>
+                            <p class="text-sm text-gray-400" id="selected-date-summary">--</p>
+                        </div>
+                        <button onclick="closeDayDetail()" class="text-gray-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto max-w-full">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-800/50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">Time</th>
+                                    <th class="px-4 py-2 text-left">Script</th>
+                                    <th class="px-4 py-2 text-left">Side</th>
+                                    <th class="px-4 py-2 text-right">Entry</th>
+                                    <th class="px-4 py-2 text-right">Exit</th>
+                                    <th class="px-4 py-2 text-right">P&L</th>
+                                    <th class="px-4 py-2 text-right">Final P&L</th>
+                                </tr>
+                            </thead>
+                            <tbody id="day-trades-body" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade Log View -->
+            <div id="view-trades" class="hidden space-y-6">
+                
+                <div class="flex items-center gap-6 mb-4">
+
+                    <!-- Index -->
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-400">Index:</label>
+                        <select id="tradeIndexFilter"
+                            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                            onchange="filterTrades()">
+                            <option value="ALL">All Indices</option>
+                        </select>
+                    </div>
+
+                </div>
+                <div class="glass-panel rounded-xl p-6 border border-gray-800">
+                    <div class="p-4 border-b border-gray-800 flex flex-wrap gap-4 items-center">
+                        <input type="text" id="filter-script" placeholder="Filter by Script..." class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onkeyup="filterTrades()">
+                        <select id="filter-status" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onchange="filterTrades()">
+                            <option value="">All Status</option>
+                            <option value="WIN">Wins Only</option>
+                            <option value="LOSS">Losses Only</option>
+                        </select>
+                        <select id="filter-idx" class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" onchange="filterTrades()">
+                            <option value="">All Indices</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto max-h-[600px] w-full">
+                        <table class="min-w-full text-sm">
+                            <thead class="text-xs text-gray-500 uppercase bg-gray-800/50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left cursor-pointer hover:text-white" onclick="sortTrades('date')">Date ↕</th>
+                                    <th class="px-4 py-3 text-left">Script</th>
+                                    <th class="px-4 py-3 text-left">Idx</th>
+                                    <th class="px-4 py-3 text-left">Buy Time</th>
+                                    <th class="px-4 py-3 text-left">Sell Time</th>
+                                    <th class="px-4 py-3 text-right">Qty</th>
+                                    <th class="px-4 py-3 text-right">Trade P&L</th>
+                                    <th class="px-4 py-3 text-right">Charges</th>
+                                    <th class="px-4 py-3 text-right">Final P&L</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-trades-body" class="divide-y divide-gray-800"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics View -->
+            <div id="view-analytics" class="hidden space-y-6">
+
+                <!-- Index Selector -->
+                
+                <div class="flex items-center gap-6 mb-4">
+
+                    <!-- Index -->
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-400">Index:</label>
+                        <select id="analyticsIndexFilter"
+                            class="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                            onchange="updateCharts()">
+                            <option value="ALL">All Indices</option>
+                        </select>
+                    </div>
+
+                </div>
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+                    <div class="glass-panel rounded-xl p-6 border border-gray-800">
+                        <h3 class="text-lg font-semibold mb-4">Equity Curve</h3>
+                        <div class="relative h-64">
+                            <canvas id="equityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-xl p-6 border border-gray-800">
+                        <h3 class="text-lg font-semibold mb-4">Win/Loss Distribution</h3>
+                        <div class="relative h-64">
+                            <canvas id="distributionChart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Hourly -->
+                <div class="glass-panel rounded-xl p-6 border border-gray-800">
+                    <h3 class="text-lg font-semibold mb-4">Hourly Performance</h3>
+                    <div class="relative h-56">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Configuration
+        const CAPITAL_PER_INDEX = 100000;
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz6c5pt3y_gSS4syy0XALQDcv9gLA8YwpyrkpvAKbgfeCDLtC8nwV-hT0RXOgQRqYOn/exec'; // Replace this!
+        
+        // State
+        let currentData = [];
+        let currentSummary = {};
+        let filteredTrades = [];
+        let charts = {};
+        let dataForCharts = [];
+
+        const INDEX_NAME_MAP = {
+            "1": "SENSEX",
+            "3": "NIFTY",
+            "2": "BANKNIFTY"};
+       
+        // Load data from Google Apps Script
+        async function loadData() {
+            const month = document.getElementById('monthSelect').value;
+            const btn = document.querySelector('button[onclick="loadData()"]');
+            const icon = document.getElementById('refreshIcon');
+
+            icon.classList.add('animate-spin');
+            btn.disabled = true;
+            window.totalModeDayWise = {};
+
+            const capitalMode = document.getElementById('capitalMode')?.value || 'TOTAL';
+
+            try {
+
+                // 🔥 Fetch selected mode summary
+                const summaryRes = await fetch(
+                    `${APPS_SCRIPT_URL}?action=summary&month=${month}&capitalMode=${capitalMode}`,
+                    { method: 'GET', mode: 'cors' }
+                );
+
+                const summary = await summaryRes.json();
+
+                if (!summary.success) {
+                    throw new Error(summary.error || 'Summary API error');
+                }
+
+                // 🔥 ALWAYS fetch TOTAL summary for stable percentage
+                const totalSummaryRes = await fetch(
+                    `${APPS_SCRIPT_URL}?action=summary&month=${month}&capitalMode=TOTAL`,
+                    { method: 'GET', mode: 'cors' }
+                );
+
+                const totalSummary = await totalSummaryRes.json();
+
+                if (!totalSummary.success) {
+                    throw new Error(totalSummary.error || 'Total Summary API error');
+                }
+                window.totalModeDayWise = totalSummary.dayWise || {};
+                // Save total-mode dayWise globally for % calculation
+                window.totalModeTrades = [];
+                const totalTradesRes = await fetch(
+                  `${APPS_SCRIPT_URL}?month=${month}&capitalMode=TOTAL`,
+                  { method: 'GET', mode: 'cors' }
+                );
+
+                const totalTrades = await totalTradesRes.json();
+
+                if (totalTrades.success) {
+                  window.totalModeTrades = totalTrades.data || [];
+                }
+
+                // 🔥 Fetch trades (selected mode)
+                const tradesRes = await fetch(
+                    `${APPS_SCRIPT_URL}?month=${month}&capitalMode=${capitalMode}`,
+                    { method: 'GET', mode: 'cors' }
+                );
+
+                const trades = await tradesRes.json();
+
+                if (!trades.success) {
+                    throw new Error(trades.error || 'Trades API error');
+                }
+
+                // ✅ Update state properly
+                currentSummary = summary;
+                currentData = trades.data || [];
+                filteredTrades = [...currentData];
+
+                // 🔥 Populate index filter BEFORE dashboard update
+                updateFilters();
+
+                // 🔥 Now update full dashboard
+                updateDashboard();
+
+            } catch (error) {
+
+                console.error('Error loading data:', error);
+
+                alert(
+                    'Error loading data: ' + error.message +
+                    '\n\nMake sure you:\n' +
+                    '1. Apps Script is deployed as Web App\n' +
+                    '2. APPS_SCRIPT_URL is correct\n' +
+                    '3. Sheet access allows reading'
+                );
+
+            } finally {
+
+                icon.classList.remove('animate-spin');
+                btn.disabled = false;
+            }
+        }
+
+        // Update all dashboard components
+        function updateDashboard() {
+            updateSummary();
+            updateIndexList();
+            updateCalendar();
+            updateTradesTable();
+            updateFilters();
+            updateCharts();
+        }
+
+        // Update sidebar summary
+        function updateSummary() {
+            const s = currentSummary;
+            document.getElementById('sum-final-pnl').textContent = formatCurrency(s.totalFinalPnl);
+            document.getElementById('sum-final-pnl').className = `text-2xl font-bold font-mono ${parseFloat(s.totalFinalPnl) >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            applyProfitGlow(parseFloat(s.totalFinalPnl));
+            
+            document.getElementById('sum-win-rate').textContent = s.winRate + '%';
+            document.getElementById('sum-total-trades').textContent = s.totalTrades;
+            
+            document.getElementById('sum-charges').textContent = formatCurrency(s.totalCharges);
+            
+            // Charges percentage
+            const grossPnl = parseFloat(s.totalFinalPnl) + parseFloat(s.totalCharges);
+            const chargesPercent = grossPnl !== 0 ? (Math.abs(parseFloat(s.totalCharges)) / Math.abs(grossPnl) * 100).toFixed(1) : 0;
+            document.getElementById('charges-percent').textContent = `${chargesPercent}% of gross P&L`;
+            document.getElementById('charges-bar').style.width = Math.min(chargesPercent * 3, 100) + '%';
+            
+            // Best Day
+            if (s.bestDay) {
+                document.getElementById('best-day-pnl').textContent =
+                    formatCurrency(s.bestDay.pnl);
+                document.getElementById('best-day-pnl').className =
+                    'font-mono font-bold text-green-400';
+
+                document.getElementById('best-day-date').textContent =
+                    formatDateNice(s.bestDay.date);
+            }
+
+            // Worst Day
+            if (s.worstDay) {
+                document.getElementById('worst-day-pnl').textContent =
+                    formatCurrency(s.worstDay.pnl);
+                document.getElementById('worst-day-pnl').className =
+                    'font-mono font-bold text-red-400';
+
+                document.getElementById('worst-day-date').textContent =
+                    formatDateNice(s.worstDay.date);
+            }
+        }
+
+        // Update index performance list
+        function updateIndexList() {
+            const container = document.getElementById('index-list');
+            const indices = currentSummary.idxWise || {};
+            
+            container.innerHTML = Object.entries(indices).map(([idx, data]) => {
+                const winRate = data.trades > 0 ? ((data.wins / data.trades) * 100).toFixed(0) : 0;
+                const pnlClass = data.pnl >= 0 ? 'text-green-400' : 'text-red-400';
+                
+                return `
+                    <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700 flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-sm">
+                                ${INDEX_NAME_MAP[idx] || idx}
+                            </div>
+                            <div class="text-xs text-gray-400">${data.trades} trades • ${winRate}% WR</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-mono font-bold ${pnlClass}">${formatCurrency(data.pnl)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update calendar heatmap
+        function updateCalendar() {
+
+            const grid = document.getElementById('calendar-grid');
+            const selectedIdx = document.getElementById('calendarIndexFilter').value;
+
+            function formatCompactPnL(value) {
+                const abs = Math.abs(value);
+                if (abs >= 100000) return (value / 100000).toFixed(2) + 'L';
+                if (abs >= 1000) return (value / 1000).toFixed(1) + 'K';
+                return value.toFixed(0);
+            }
+            
+            const month = document.getElementById('monthSelect').value;
+            //const year = 2026;
+            const year = currentYear;
+            const monthNum = new Date(`${month} 1, ${year}`).getMonth();
+            const daysInMonth = new Date(year, monthNum + 1, 0).getDate();
+
+            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            let html = days.map(d =>
+                `<div class="text-center text-xs text-gray-500 font-medium py-2">${d}</div>`
+            ).join('');
+
+            const firstDay = new Date(year, monthNum, 1).getDay();
+            for (let i = 0; i < firstDay; i++) {
+                html += '<div></div>';
+            }
+
+            for (let day = 1; day <= daysInMonth; day++) {
+
+                const dateStr = `${year}-${String(monthNum + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                const jsDate = new Date(dateStr);
+                const dayOfWeek = jsDate.getDay();
+                const holidayInfo = marketHolidays[dateStr];
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+                // Holiday OR Weekend
+                if (holidayInfo || isWeekend) {
+
+                    const icon = holidayInfo
+                        ? holidayInfo.icon
+                        : (dayOfWeek === 0 ? "🌞" : "🌴");
+
+                    const label = holidayInfo
+                        ? holidayInfo.name
+                        : (dayOfWeek === 0 ? "Sunday" : "Saturday");
+
+                    html += `
+                        <div class="calendar-day bg-gray-800/30 border border-yellow-500/30 text-gray-300">
+                            <div class="text-[11px]">${day}</div>
+                            <div class="text-lg">${icon}</div>
+                            <div class="text-[9px] text-center leading-tight">
+                                ${label}
+                            </div>
+                        </div>
+                    `;
+                    continue;
+                }
+
+                // if (holidayInfo || isWeekend) {
+
+                //     const icon = holidayInfo
+                //         ? holidayInfo.icon
+                //         : (dayOfWeek === 0 ? "🌞" : "🌴");
+
+                //     const tooltip = holidayInfo
+                //         ? holidayInfo.name
+                //         : (dayOfWeek === 0 ? "Sunday" : "Saturday");
+
+                //     html += `
+                //         <div class="calendar-day bg-gray-800/30 border border-yellow-500/30 relative"
+                //              title="${tooltip}">
+                             
+                //             <div class="absolute top-1 right-1 text-sm">
+                //                 ${icon}
+                //             </div>
+
+                //             <div class="text-xl font-bold">
+                //                 ${day}
+                //             </div>
+                //         </div>
+                //     `;
+                //     continue;
+                // }
+
+                // Weekday WITH trade data
+                const totalDayData = window.totalModeDayWise[dateStr];
+
+                // 🔹 1. Raw PnL (changes with mode)
+                let dayPnl = 0;
+
+                if (selectedIdx === 'ALL') {
+                    dayPnl = currentData
+                        .filter(t => t.date === dateStr)
+                        .reduce((sum, t) => sum + t.finalPnl, 0);
+                } else {
+                    dayPnl = currentData
+                        .filter(t => t.date === dateStr && t.idx === selectedIdx)
+                        .reduce((sum, t) => sum + t.finalPnl, 0);
+                }
+
+                if (dayPnl !== 0) {
+
+                    const heatClass = getHeatmapClass(dayPnl);
+                    const pnlText = formatCompactPnL(dayPnl);
+
+                    // 🔹 2. Capital (fixed)
+                    let capital;
+                    if (selectedIdx === 'ALL') {
+                        const tradedIndices = new Set(
+                            window.totalModeTrades
+                                .filter(t => t.date === dateStr)
+                                .map(t => t.idx)
+                        );
+                        capital = tradedIndices.size * CAPITAL_PER_INDEX;
+                    } else {
+                        capital = CAPITAL_PER_INDEX;
+                    }
+
+                    // 🔹 3. Percent ALWAYS from TOTAL mode
+                    let percentBasePnl = 0;
+
+                    if (selectedIdx === 'ALL') {
+                        const totalDayData = window.totalModeDayWise[dateStr];
+                        percentBasePnl = totalDayData ? totalDayData.pnl : 0;
+                    } else {
+                        percentBasePnl = window.totalModeTrades
+                            .filter(t => t.date === dateStr && t.idx === selectedIdx)
+                            .reduce((sum, t) => sum + t.finalPnl, 0);
+                    }
+
+                    const percent = capital > 0
+                        ? ((percentBasePnl / capital) * 100).toFixed(2)
+                        : 0;
+
+                    html += `
+                        <div class="calendar-day ${heatClass}"
+                             onclick="showDayDetail('${dateStr}')">
+                            <div class="text-[11px] opacity-70">${day}</div>
+                            <div class="text-sm font-bold text-center">${pnlText}</div>
+                            <div class="text-[11px] text-center ${percent >= 0 ? 'text-green-100' : 'text-red-100'}">
+                                ${percent > 0 ? '+' : ''}${percent}%
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="calendar-day bg-gray-900/40 border border-gray-800 text-gray-500 text-xs">
+                            ${day}
+                        </div>
+                    `;
+                }
+            }
+
+            grid.innerHTML = html;
+        }
+
+        // Get heatmap color class based on P&L
+        function getHeatmapClass(pnl) {
+            if (pnl > 40000) return 'heat-high-pos';
+            if (pnl > 20000) return 'heat-med-pos';
+            if (pnl > 0) return 'heat-low-pos';
+            if (pnl === 0) return 'heat-zero';
+            if (pnl > -15000) return 'heat-low-neg';
+            if (pnl > -25000) return 'heat-med-neg';
+            return 'heat-high-neg';
+        }
+
+        // Show day detail
+        function showDayDetail(dateStr) {
+
+            const selectedIdx = document.getElementById('calendarIndexFilter').value;
+
+            const dayTrades = currentData.filter(t =>
+                t.date === dateStr &&
+                (selectedIdx === 'ALL' || t.idx === selectedIdx)
+            );
+
+            if (dayTrades.length === 0) return;
+
+            const totalPnl = dayTrades.reduce((sum, t) => sum + t.finalPnl, 0);
+            const wins = dayTrades.filter(t => t.finalPnl > 0).length;
+
+            document.getElementById('selected-date').textContent = formatDateNice(dateStr);
+            document.getElementById('selected-date-summary').textContent =
+                `${dayTrades.length} trades • P&L: ${formatCurrency(totalPnl)} • Wins: ${wins}/${dayTrades.length}`;
+
+            const tbody = document.getElementById('day-trades-body');
+
+            tbody.innerHTML = dayTrades.map(t => `
+                <tr class="trade-row">
+                    <td class="px-4 py-3 font-mono text-xs">${t.buyTime} - ${t.sellTime}</td>
+                    <td class="px-4 py-3 font-medium">${t.script}</td>
+                    <td class="px-4 py-3 text-right font-mono font-bold ${t.finalPnl >= 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${formatCurrency(t.finalPnl)}
+                    </td>
+                </tr>
+            `).join('');
+
+            document.getElementById('day-detail').classList.remove('hidden');
+            document.getElementById('day-detail').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeDayDetail() {
+            document.getElementById('day-detail').classList.add('hidden');
+        }
+
+        // Update trades table
+        function updateTradesTable() {
+            const tbody = document.getElementById('all-trades-body');
+            tbody.innerHTML = filteredTrades.map(t => `
+                <tr class="trade-row transition-colors">
+                    <td class="px-4 py-3 font-mono text-xs text-gray-400">${formatDateNice(t.date)}</td>
+                    <td class="px-4 py-3 font-medium">${t.script}</td>
+                    <td class="px-4 py-3 text-xs">
+                        ${INDEX_NAME_MAP[t.idx] || t.idx || '-'}
+                    </td>
+                    <td class="px-4 py-3 font-mono text-xs">${t.buyTime}</td>
+                    <td class="px-4 py-3 font-mono text-xs">${t.sellTime}</td>
+                    <td class="px-4 py-3 text-right font-mono">${t.quantity}</td>
+                    <td class="px-4 py-3 text-right font-mono ${t.tradePnl >= 0 ? 'text-green-400' : 'text-red-400'}">${formatCurrency(t.tradePnl)}</td>
+                    <td class="px-4 py-3 text-right font-mono text-red-300">${formatCurrency(t.charges)}</td>
+                    <td class="px-4 py-3 text-right font-mono font-bold ${t.finalPnl >= 0 ? 'text-green-400' : 'text-red-400'}">${formatCurrency(t.finalPnl)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-2 py-1 rounded text-xs ${t.status === 'WIN' ? 'bg-green-500/20 text-green-400' : t.status === 'LOSS' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'}">
+                            ${t.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update filter options
+        function updateFilters() {
+            
+            const idxSelect = document.getElementById('filter-idx');
+            const calendarFilter = document.getElementById('calendarIndexFilter');
+            const tradeIndexFilter = document.getElementById('tradeIndexFilter');
+            const analyticsIndexFilter = document.getElementById('analyticsIndexFilter');
+
+            const indices = [...new Set(currentData.map(t => t.idx).filter(Boolean))];
+
+            const currentTradeFilterVal = idxSelect.value;
+            const currentCalendarVal = calendarFilter.value;
+
+            // 🔥 Calculate monthly PnL per index
+            const indexTotals = {};
+
+            currentData.forEach(t => {
+                if (!indexTotals[t.idx]) {
+                    indexTotals[t.idx] = 0;
+                }
+                indexTotals[t.idx] += t.finalPnl;
+            });
+
+            function buildOption(idx) {
+
+                const pnl = indexTotals[idx] || 0;
+                const percent = ((pnl / CAPITAL_PER_INDEX) * 100).toFixed(2);
+
+                const name = INDEX_NAME_MAP[idx] || idx;
+
+                const pnlFormatted = formatCurrency(pnl);
+                const percentText = `${percent > 0 ? '+' : ''}${percent}%`;
+
+                return `
+                    <option value="${idx}">
+                        ${name} | ${pnlFormatted} | ${percentText}
+                    </option>
+                `;
+            }
+
+            // Trade Log Index Filter
+            if (tradeIndexFilter) {
+                tradeIndexFilter.innerHTML =
+                    '<option value="">All Indices</option>' +
+                    indices.map(buildOption).join('');
+            }
+
+            // Analytics Index Filter
+            if (analyticsIndexFilter) {
+                analyticsIndexFilter.innerHTML =
+                    '<option value="ALL">All Indices</option>' +
+                    indices.map(buildOption).join('');
+            }
+            // 🔹 Trade Log Dropdown
+            idxSelect.innerHTML =
+                '<option value="">All Indices</option>' +
+                indices.map(buildOption).join('');
+
+            idxSelect.value = currentTradeFilterVal;
+
+            // 🔹 Calendar Dropdown
+            calendarFilter.innerHTML =
+                '<option value="ALL">All Indices</option>' +
+                indices.map(buildOption).join('');
+
+            calendarFilter.value = currentCalendarVal;
+        }
+        // Filter trades
+        function filterTrades() {
+            const tradeIndex = document.getElementById('tradeIndexFilter')?.value;
+            const scriptFilter = document.getElementById('filter-script').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+            const idxFilter = document.getElementById('filter-idx').value;
+            
+            filteredTrades = currentData.filter(t => {
+                const matchScript = !scriptFilter || t.script.toLowerCase().includes(scriptFilter);
+                const matchStatus = !statusFilter || t.status === statusFilter;
+                const matchIdx =
+                    (!idxFilter || t.idx === idxFilter) &&
+                    (!tradeIndex || t.idx === tradeIndex);
+                return matchScript && matchStatus && matchIdx;
+            });
+            
+            updateTradesTable();
+        }
+
+        // Sort trades
+        let sortDir = {};
+        function sortTrades(field) {
+            sortDir[field] = !sortDir[field];
+            filteredTrades.sort((a, b) => {
+                if (a[field] < b[field]) return sortDir[field] ? -1 : 1;
+                if (a[field] > b[field]) return sortDir[field] ? 1 : -1;
+                return 0;
+            });
+            updateTradesTable();
+        }
+
+        // Update charts
+        function updateCharts() {
+            const selectedIdx = document.getElementById('analyticsIndexFilter')?.value;
+
+            dataForCharts = currentData;
+
+            if (selectedIdx && selectedIdx !== 'ALL') {
+                dataForCharts = currentData.filter(t => t.idx === selectedIdx);
+            }
+
+            updateEquityChart();
+            updateDistributionChart();
+            updateHourlyChart();
+        }
+
+        function updateEquityChart() {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            const capitalMode = document.getElementById('capitalMode').value;
+            
+            if (charts.equity) charts.equity.destroy();
+            
+            // Calculate cumulative P&L
+            let cumulative = 0;
+
+            const equityData = dataForCharts.map(t => {
+                cumulative += t.finalPnl;
+                return cumulative;
+            });
+            
+            charts.equity = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataForCharts.map(t => t.date.slice(5)),
+                    datasets: [{
+                        label: 'Cumulative P&L',
+                        data: equityData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b7280', maxTicksLimit: 8 } },
+                        y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', callback: v => capitalMode === 'COMPOUND'? (v / 100000).toFixed(2) + 'L' : '₹' + v } }
+                    }
+                }
+            });
+        }
+
+        function updateDistributionChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+
+            if (charts.distribution) charts.distribution.destroy();
+
+            const wins = dataForCharts.filter(t => t.status === 'WIN').length;
+            const losses = dataForCharts.filter(t => t.status === 'LOSS').length;
+
+            const total = wins + losses;
+
+            const winPercent = total ? ((wins / total) * 100).toFixed(1) : 0;
+            const lossPercent = total ? ((losses / total) * 100).toFixed(1) : 0;
+
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw(chart) {
+                    const { width, height, ctx } = chart;
+
+                    ctx.restore();
+
+                    const fontSize = (height / 8).toFixed(2);
+                    ctx.font = `${fontSize}px Inter`;
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = winPercent >= 50 ? "#10b981" : "#ef4444";
+
+                    const text = `${winPercent}%`;
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            };
+
+            charts.distribution = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        `Wins (${winPercent}%)`,
+                        `Losses (${lossPercent}%)`
+                    ],
+                    datasets: [{
+                        data: [wins, losses],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#9ca3af',
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const percent = total
+                                        ? ((value / total) * 100).toFixed(1)
+                                        : 0;
+                                    return `${value} trades (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [centerTextPlugin]
+            });
+        }
+        function reloadWithCapitalMode() {
+            loadData();
+        }
+
+        function updateHourlyChart() {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            const capitalMode = document.getElementById('capitalMode').value;
+            
+            if (charts.hourly) charts.hourly.destroy();
+            
+            // Group by hour
+            const hourly = {};
+            dataForCharts.forEach(t => {
+                if (!t.buyTime) return;
+                const hour = t.buyTime.split(':')[0];
+                if (!hourly[hour]) hourly[hour] = { pnl: 0, count: 0 };
+                hourly[hour].pnl += t.finalPnl;
+                hourly[hour].count += 1;
+            });
+            
+            const hours = Object.keys(hourly).sort();
+            
+            charts.hourly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours.map(h => h + ':00'),
+                    datasets: [{
+                        label: 'P&L by Hour',
+                        data: hours.map(h => hourly[h].pnl),
+                        backgroundColor: hours.map(h => hourly[h].pnl >= 0 ? '#10b981' : '#ef4444'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#6b7280' } },
+                        y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', callback: v => capitalMode === 'COMPOUND'? (v / 100000).toFixed(2) + 'L' : '₹' + v } }
+                    }
+                }
+            });
+        }
+
+        // View switching
+        function switchView(view) {
+            ['calendar', 'trades', 'analytics'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+                document.getElementById(`btn-${v}`).className = 'px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-300 hover:bg-gray-700 transition-colors';
+            });
+            
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById(`btn-${view}`).className = 'px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white transition-colors';
+            
+            if (view === 'analytics') {
+                setTimeout(updateCharts, 100);
+            }
+        }
+
+        // Utilities
+        function formatCurrency(val) {
+            if (!val) return '₹0.00';
+            const num = parseFloat(val);
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(num);
+        }
+
+        function formatDateNice(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        ////////////////////////////////////////added///////////
+        let currentMonthIndex;
+        let currentYear;
+
+        const today = new Date();
+        const currentRealMonth = today.getMonth();
+        const currentRealYear = today.getFullYear();
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const monthSelect = document.getElementById("monthSelect");
+
+            currentMonthIndex = currentRealMonth;
+            currentYear = currentRealYear;
+
+            monthSelect.selectedIndex = currentMonthIndex;
+
+            updateHeatmapMonth(true);
+
+            monthSelect.addEventListener("change", function () {
+                currentMonthIndex = monthSelect.selectedIndex;
+                updateHeatmapMonth(true);
+            });
+
+        });
+
+        function updateHeatmapMonth(fromDropdown = false, direction = 0) {
+
+            const monthSelect = document.getElementById("monthSelect");
+            const monthText = monthSelect.options[currentMonthIndex].text;
+            const monthDisplay = document.getElementById("heatmapMonth");
+
+            // 🚫 Disable future months
+            if (
+                currentYear > currentRealYear ||
+                (currentYear === currentRealYear && currentMonthIndex > currentRealMonth)
+            ) {
+                return;
+            }
+
+            // 🎬 Slide animation
+            if (!fromDropdown) {
+                monthDisplay.classList.remove("month-active");
+
+                if (direction === 1) {
+                    monthDisplay.classList.add("month-slide-right");
+                } else if (direction === -1) {
+                    monthDisplay.classList.add("month-slide-left");
+                }
+
+                setTimeout(() => {
+                    monthDisplay.classList.remove("month-slide-left", "month-slide-right");
+                    monthDisplay.innerText = monthText + " " + currentYear;
+                    monthDisplay.classList.add("month-active");
+                }, 200);
+            } else {
+                monthDisplay.innerText = monthText + " " + currentYear;
+            }
+
+            monthSelect.selectedIndex = currentMonthIndex;
+
+            fadeReloadHeatmap();
+        }
+
+        function changeMonth(direction) {
+
+            currentMonthIndex += direction;
+
+            if (currentMonthIndex > 11) {
+                currentMonthIndex = 0;
+                currentYear++;
+            }
+
+            if (currentMonthIndex < 0) {
+                currentMonthIndex = 11;
+                currentYear--;
+            }
+
+            updateHeatmapMonth(false, direction);
+        }
+
+        function fadeReloadHeatmap() {
+
+            const grid = document.getElementById("calendar-grid");
+
+            grid.classList.add("heatmap-fade");
+
+            setTimeout(() => {
+                loadData(); // your existing function
+                grid.classList.remove("heatmap-fade");
+                grid.classList.add("heatmap-show");
+            }, 200);
+        }
+        function applyProfitGlow(monthPnL) {
+
+            const monthDisplay = document.getElementById("heatmapMonth");
+
+            if (monthPnL > 0) {
+                monthDisplay.classList.add("drop-shadow-[0_0_12px_rgba(34,197,94,0.8)]");
+            } else {
+                monthDisplay.classList.remove("drop-shadow-[0_0_12px_rgba(34,197,94,0.8)]");
+            }
+        }
+        
+        let sidebarCollapsed = false;
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggleIcon');
+
+            sidebar.classList.toggle('sidebar-collapsed');
+
+            const collapsed = sidebar.classList.contains('sidebar-collapsed');
+            icon.innerText = collapsed ? "▶" : "◀";
+        }
+
+        function updateClock() {
+            const now = new Date();
+
+            const ist = new Date(
+                now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+            );
+
+            const h = String(ist.getHours()).padStart(2, '0');
+            const m = String(ist.getMinutes()).padStart(2, '0');
+            const s = String(ist.getSeconds()).padStart(2, '0');
+
+            document.querySelector(".hours-minutes").textContent = `${h}:${m}`;
+            document.querySelector(".seconds").textContent = `:${s}`;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        const marketHolidays = {
+            "2026-01-15": { icon: "🗳️", name: "Municipal Corporation Election" },
+            "2026-01-26": { icon: "🇮🇳", name: "Republic Day" },
+            "2026-03-03": { icon: "🎨", name: "Holi" },
+            "2026-03-26": { icon: "🏹", name: "Shri Ram Navami" },
+            "2026-03-31": { icon: "🕉️", name: "Shri Mahavir Jayanti" },
+            "2026-04-03": { icon: "✝️", name: "Good Friday" },
+            "2026-04-14": { icon: "📘", name: "Dr. B.R. Ambedkar Jayanti" },
+            "2026-05-01": { icon: "⚙️", name: "Maharashtra Day" },
+            "2026-05-28": { icon: "🕌", name: "Bakri Id" },
+            "2026-06-26": { icon: "🌙", name: "Muharram" },
+            "2026-09-14": { icon: "🐘", name: "Ganesh Chaturthi" },
+            "2026-10-02": { icon: "🕊️", name: "Gandhi Jayanti" },
+            "2026-10-20": { icon: "🏹", name: "Dussehra" },
+            "2026-11-10": { icon: "🪔", name: "Diwali" },
+            "2026-11-24": { icon: "☬", name: "Guru Nanak Jayanti" },
+            "2026-12-25": { icon: "🎄", name: "Christmas" }
+        };
+
+        function getHolidayInfo() {
+            const now = new Date();
+
+            const istDate = new Date(
+                now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+            );
+
+            const yyyy = istDate.getFullYear();
+            const mm = String(istDate.getMonth() + 1).padStart(2, "0");
+            const dd = String(istDate.getDate()).padStart(2, "0");
+
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            // Sunday = 0, Saturday = 6
+            if (istDate.getDay() === 0)
+                return { icon: "🌞", name: "Sunday" };
+
+            if (istDate.getDay() === 6)
+                return { icon: "🌴", name: "Saturday" };
+
+            return marketHolidays[dateStr] || null;
+        }
+
+        function updateHolidayBanner() {
+            const holiday = getHolidayInfo();
+            const banner = document.getElementById("holiday-banner");
+
+            if (holiday) {
+                banner.innerHTML = `${holiday.icon} ${holiday.name}`;
+                banner.style.display = "block";
+            } else {
+                banner.style.display = "none";
+            }
+        }
+
+        updateHolidayBanner();
+    </script>
+</body>
+</html>

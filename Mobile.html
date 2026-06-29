@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <meta name="theme-color" content="#0a0e1a">
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0e1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="ProTrade Analytics PWA">
+    <title>ProTrade PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-card: #111827;
+            --border: #1f2937;
+            --text: #f3f4f6;
+            --text-muted: #6b7280;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top, #111827 0%, #0a0e1a 60%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(31, 41, 55, 0.5);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* App Container */
+        .app-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(17,24,39,0.7);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        /* Capital Mode Selector */
+        .capital-mode-bar {
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .mode-select {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+        }
+        
+        /* Month Selector */
+        .month-selector {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 12px 16px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .month-selector::-webkit-scrollbar { display: none; }
+        
+        .month-btn {
+            padding: 10px 18px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            font-size: 16px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .month-btn.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 16px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent);
+        }
+        
+        .stat-card.profit::before { background: var(--success); }
+        .stat-card.loss::before { background: var(--danger); }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            font-size: 30px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        .stat-value.positive { color: var(--success); }
+        .stat-value.negative { color: var(--danger); }
+        
+        .stat-sub {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* Calendar Heatmap */
+        .calendar-section {
+            padding: 16px;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .calendar-nav {
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .calendar-month {
+            font-size: 32px;
+            letter-spacing: 0.5px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            min-width: 140px;
+            text-align: center;
+        }
+        .view {
+            transition: opacity 0.25s ease;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+        }
+        
+        .day-label {
+            text-align: center;
+            font-size: 18px;
+            color: var(--text-muted);
+            padding: 8px 0;
+            font-weight: 700;
+        }
+        
+        .calendar-day {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: pointer;
+            transition: transform 0.15s;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            min-height: 100px;
+            padding-top: 20px;
+        }
+        
+        .calendar-day:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        }
+        .calendar-day.empty { background: transparent; border: none; }
+        .calendar-day.weekend { background: rgba(31, 41, 55, 0.3); color: var(--text-muted); }        
+        
+        .calendar-day {
+            position: relative;
+        }
+
+        .calendar-day .day-num {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            font-size: 20px;
+            font-weight: 700;
+            opacity: 0.9;
+            line-height: 1;
+        }
+        
+        .calendar-day .day-pnl {
+            font-size: 25px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+        
+        .calendar-day .day-percent {
+            font-size: 20px;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+        
+        /* Heatmap colors */
+        .heat-high-pos { background: #059669; color: white; border-color: #059669; }
+        .heat-med-pos { background: #10b981; color: white; border-color: #10b981; }
+        .heat-low-pos { background: #34d399; color: #064e3b; border-color: #34d399; }
+        .heat-zero { background: var(--bg-card); color: var(--text-muted); }
+        .heat-low-neg { background: #f87171; color: #7f1d1d; border-color: #f87171; }
+        .heat-med-neg { background: #ef4444; color: white; border-color: #ef4444; }
+        .heat-high-neg { background: #b91c1c; color: white; border-color: #b91c1c; }
+        
+        /* Filter Bar */
+        .filter-bar {
+            padding: 0 16px 12px;
+        }
+        
+        .filter-select {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+        
+        /* Index Performance */
+        .index-list {
+            padding: 0 16px 16px;
+        }
+        
+        .index-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .index-name {
+            font-weight: 600;
+            font-size: 22px;
+        }
+        
+        .index-stats {
+            text-align: right;
+        }
+        
+        .index-pnl {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 25px;
+        }
+        
+        .index-count {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Day Detail Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        
+        .modal.active { display: block; }
+        
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 500px;
+            margin: 20px auto;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 12px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .trade-item {
+            background: var(--bg-primary);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--border);
+        }
+        
+        .trade-item.win { border-left-color: var(--success); }
+        .trade-item.loss { border-left-color: var(--danger); }
+        
+        .trade-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        
+        .trade-script {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .trade-pnl {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        .trade-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        .trade-detail span {
+            display: block;
+            color: var(--text);
+            font-weight: 500;
+            margin-top: 2px;
+            font-size: 12px;
+        }
+        
+        /* Trades View */
+        .trades-list {
+            padding: 16px;
+        }
+        
+        .search-box {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text);
+            font-size: 14px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .filter-select-half {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+        }
+        
+        /* Analytics View */
+        .analytics-section {
+            padding: 12px;
+        }
+        
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        /* Loading & Offline */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+        }
+        
+        .loading-overlay.hidden { display: none; }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .offline-badge {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f59e0b;
+            color: #000;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: none;
+            z-index: 150;
+        }
+        
+        .offline-badge.active { display: block; }
+        
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(17,24,39,0.85);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            z-index: 100;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 16px;
+            color: var(--text-muted);
+            font-size: 11px;
+            cursor: pointer;
+            transition: color 0.2s;
+            border: none;
+            background: none;
+        }
+        
+        .nav-item.active {
+            color: #3b82f6;
+            transform: scale(1.05);
+        }
+        .nav-item.active::after {
+            content: '';
+            width: 20px;
+            height: 3px;
+            background: #3b82f6;
+            border-radius: 4px;
+            margin-top: 4px;
+        }
+        
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            margin-bottom: 4px;
+        }
+        
+        /* Install Prompt */
+        .install-prompt {
+            position: fixed;
+            bottom: 90px;
+            left: 16px;
+            right: 16px;
+            background: var(--accent);
+            color: white;
+            padding: 16px;
+            border-radius: 12px;
+            display: none;
+            z-index: 250;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .install-prompt.active { display: block; }
+        
+        .install-btn {
+            background: white;
+            color: var(--accent);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 8px;
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        /* View switching */
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        /* Refresh button */
+        .refresh-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .refresh-btn:active { transform: scale(0.95); }
+        .refresh-btn.spinning svg { animation: spin 1s linear infinite; }
+        
+        /* Animations */
+        .month-slide-left {
+            transform: translateX(-20px);
+            opacity: 0;
+        }
+
+        .month-slide-right {
+            transform: translateX(20px);
+            opacity: 0;
+        }
+
+        .month-active {
+            transform: translateX(0);
+            opacity: 1;
+            transition: all 0.3s ease;
+        }
+
+        .heatmap-fade {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .heatmap-show {
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .profit-glow {
+            filter: drop-shadow(0 0 12px rgba(34,197,94,0.8));
+        }
+        .chart-container {
+            background: #111827;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 18px;
+            height: 260px;
+            box-shadow: 
+                0 4px 12px rgba(0,0,0,0.35),
+                inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+        .stat-value.positive {
+            text-shadow: 0 0 10px rgba(16,185,129,0.4);
+        }
+
+        .stat-value.negative {
+            text-shadow: 0 0 10px rgba(239,68,68,0.4);
+        }
+
+        #digital-clock{
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            z-index: 9999;
+
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
+
+            color: #00ffcc;
+
+            padding: 6px 14px;
+            border-radius: 10px;
+
+            font-family: "Courier New", monospace;
+
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+
+        #holiday-banner{
+            position: fixed;
+            top: 50px;   /* below clock */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Mobile */
+        @media (max-width: 768px){
+            #digital-clock{
+                top: 5px;
+                font-size: 30px;
+                padding: 6px 10px;
+            }
+        }
+
+        .hours-minutes {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .seconds {
+            font-size: 25px;
+            opacity: 0.7;
+        }
+
+        #holiday-banner{
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+
+            padding: 4px 12px;
+
+            background: rgba(255,193,7,.15);
+            border: 1px solid rgba(255,193,7,.3);
+
+            color: #ffd54f;
+            border-radius: 20px;
+
+            font-size: 13px;
+            font-weight: 600;
+
+            backdrop-filter: blur(8px);
+
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 16px; color: var(--text-muted); font-size: 14px;">Loading trades...</p>
+    </div>
+    <div id="digital-clock">
+        <span class="hours-minutes">00:00</span>
+        <span class="seconds">00</span>
+    </div>
+    <div id="holiday-banner"></div>
+    <!-- Offline Badge -->
+    <div class="offline-badge" id="offlineBadge">⚠️ Offline Mode</div>
+
+    <!-- Install Prompt -->
+    <div class="install-prompt" id="installPrompt">
+        <div style="font-weight: 600; margin-bottom: 4px;">Install ProTrade</div>
+        <div style="font-size: 13px; opacity: 0.9;">Add to home screen for quick access</div>
+        <button class="install-btn" onclick="installPWA()">Install App</button>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <!-- <div class="logo">Trade<span style="color: #3b82f6;">Analytics</span></div> -->
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold">
+                    <div>
+                        Trade<span class="gradient-text">Analytics</span>
+                    </div>
+                    <div class="text-gray-500 text-sm font-normal">
+                        The Algo Trade Room
+                    </div>
+                </h1>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <a href="Desktop.html" title="Switch to Desktop View" class="device-switch">
+                    🖥️
+                </a>
+
+                <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Capital Mode Selector -->
+    <div class="capital-mode-bar">
+        <select id="capitalMode" class="mode-select" onchange="reloadWithCapitalMode()">
+            <option value="TOTAL">Total Capital Mode</option>
+            <option value="COMPOUND">Compounding Capital Mode</option>
+        </select>
+    </div>
+
+    <!-- Month Selector -->
+    <div class="month-selector" id="monthSelector">
+        <button class="month-btn" data-month="Jan" onclick="selectMonth('Jan', 0)">Jan</button>
+        <button class="month-btn" data-month="Feb" onclick="selectMonth('Feb', 1)">Feb</button>
+        <button class="month-btn" data-month="Mar" onclick="selectMonth('Mar', 2)">Mar</button>
+        <button class="month-btn" data-month="Apr" onclick="selectMonth('Apr', 3)">Apr</button>
+        <button class="month-btn" data-month="May" onclick="selectMonth('May', 4)">May</button>
+        <button class="month-btn" data-month="Jun" onclick="selectMonth('Jun', 5)">Jun</button>
+        <button class="month-btn" data-month="Jul" onclick="selectMonth('Jul', 6)">Jul</button>
+        <button class="month-btn" data-month="Aug" onclick="selectMonth('Aug', 7)">Aug</button>
+        <button class="month-btn" data-month="Sep" onclick="selectMonth('Sep', 8)">Sep</button>
+        <button class="month-btn" data-month="Oct" onclick="selectMonth('Oct', 9)">Oct</button>
+        <button class="month-btn" data-month="Nov" onclick="selectMonth('Nov', 10)">Nov</button>
+        <button class="month-btn" data-month="Dec" onclick="selectMonth('Dec', 11)">Dec</button>
+    </div>
+
+    <!-- Views -->
+    <div class="app-container">
+        
+        <!-- Dashboard View -->
+        <div class="view active" id="view-dashboard">
+            
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card profit">
+                    <div class="stat-label">Net P&L</div>
+                    <div class="stat-value" id="stat-pnl">--</div>
+                    <div class="stat-sub" id="stat-winrate">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Trades</div>
+                    <div class="stat-value" id="stat-trades">--</div>
+                    <div class="stat-sub" id="stat-avg">-- avg</div>
+                </div>
+                <div class="stat-card loss">
+                    <div class="stat-label">Charges</div>
+                    <div class="stat-value negative" id="stat-charges">--</div>
+                    <div class="stat-sub">Total fees</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Best Day</div>
+                    <div class="stat-value positive" id="stat-best">--</div>
+                    <div class="stat-sub" id="stat-best-date">--</div>
+                </div>
+            </div>
+
+            <!-- Index Filter -->
+            <div class="filter-bar">
+                <select id="calendarIndexFilter" class="filter-select" onchange="updateCalendar()">
+                    <option value="ALL">All Indices</option>
+                </select>
+            </div>
+
+            <!-- Calendar -->
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <button class="calendar-nav" onclick="changeMonth(-1)">◀</button>
+                    <div class="calendar-month" id="calendarMonth"></div>
+                    <button class="calendar-nav" onclick="changeMonth(1)">▶</button>
+                </div>
+                
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+
+            <!-- Index Performance -->
+            <div class="index-list">
+                <div class="section-title">Index Performance</div>
+                <div id="indexList">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Trades View -->
+        <div class="view" id="view-trades">
+            <div class="trades-list">
+                <div class="filter-row">
+                    <select id="tradeIndexFilter" class="filter-select-half" onchange="filterTrades()">
+                        <option value="">All Indices</option>
+                    </select>
+                    <select id="filterStatus" class="filter-select-half" onchange="filterTrades()">
+                        <option value="">All Status</option>
+                        <option value="WIN">Wins</option>
+                        <option value="LOSS">Losses</option>
+                    </select>
+                </div>
+                
+                <input type="text" id="searchScript" class="search-box" placeholder="Search script..." oninput="filterTrades()">
+                
+                <div id="tradesList">
+                    <!-- Generated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics View -->
+        <div class="view" id="view-analytics">
+            <div class="analytics-section">
+                <div class="filter-bar">
+                    <select id="analyticsIndexFilter" class="filter-select" onchange="updateCharts()">
+                        <option value="ALL">All Indices</option>
+                    </select>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">Equity Curve</div>
+                    <canvas id="equityChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">Win/Loss Distribution</div>
+                    <canvas id="distributionChart"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">Hourly Performance</div>
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Day Detail Modal -->
+    <div class="modal" id="dayModal" onclick="closeModalOnBackground(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <h3 style="font-size: 16px; font-weight: 600;" id="modal-date">--</h3>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="modal-summary">--</p>
+                </div>
+                <button onclick="closeModal()" style="background: none; border: none; color: var(--text); font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">×</button>
+            </div>
+            <div class="modal-body" id="modal-trades">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchView('dashboard', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span>Dashboard</span>
+        </button>
+        <button class="nav-item" onclick="switchView('trades', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+            <span>Trades</span>
+        </button>
+        <button class="nav-item" onclick="switchView('analytics', this)">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 20V10M12 20V4M6 20v-6"></path>
+            </svg>
+            <span>Analytics</span>
+        </button>
+    </nav>
+
+    <script>
+        // Configuration
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz6c5pt3y_gSS4syy0XALQDcv9gLA8YwpyrkpvAKbgfeCDLtC8nwV-hT0RXOgQRqYOn/exec';
+        const CACHE_KEY = 'trading_data';
+        const CAPITAL_PER_INDEX = 100000;
+        
+        // State
+        const today = new Date();
+
+        let currentMonthIndex = today.getMonth();
+        let currentYear = today.getFullYear();
+
+        const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let currentMonth = monthNames[currentMonthIndex];
+        let currentData = [];
+        let currentSummary = {};
+        let filteredTrades = [];
+        let charts = {};
+        let dataForCharts = [];
+        let totalModeDayWise = {};
+        let totalModeTrades = [];
+        let deferredPrompt = null;
+
+        const INDEX_NAME_MAP = {
+            "1": "SENSEX",
+            "3": "NIFTY",
+            "2": "BANKNIFTY"
+        };
+
+        const currentRealMonth = today.getMonth();
+        const currentRealYear = today.getFullYear();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const activeBtn =
+                document.querySelectorAll('.month-btn')[currentMonthIndex];
+
+            activeBtn.classList.add('active');
+
+            activeBtn.scrollIntoView({
+                behavior: 'smooth',
+                inline: 'center',
+                block: 'nearest'
+            });
+
+            initPWA();
+            loadData();
+        });
+
+        // PWA Setup
+        function initPWA() {
+            // Register service worker for offline support
+            if ('serviceWorker' in navigator) {
+                const swCode = `
+                    self.addEventListener('install', e => {
+                        e.waitUntil(self.skipWaiting());
+                    });
+                    self.addEventListener('activate', e => {
+                        e.waitUntil(self.clients.claim());
+                    });
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(
+                            fetch(e.request).catch(() => {
+                                return new Response(JSON.stringify({offline: true}));
+                            })
+                        );
+                    });
+                `;
+                
+                try {
+                    const blob = new Blob([swCode], {type: 'application/javascript'});
+                    const swUrl = URL.createObjectURL(blob);
+                    navigator.serviceWorker.register(swUrl).catch(() => {});
+                } catch(e) {}
+            }
+
+            // Install prompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                setTimeout(() => {
+                    document.getElementById('installPrompt').classList.add('active');
+                }, 2000);
+            });
+
+            // Online/offline detection
+            window.addEventListener('online', () => {
+                document.getElementById('offlineBadge').classList.remove('active');
+                refreshData();
+            });
+            
+            window.addEventListener('offline', () => {
+                document.getElementById('offlineBadge').classList.add('active');
+            });
+        }
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    document.getElementById('installPrompt').classList.remove('active');
+                });
+            }
+        }
+
+        // Data Loading
+        async function loadData() {
+            showLoading(true);
+            
+            const capitalMode = document.getElementById('capitalMode')?.value || 'TOTAL';
+            const cacheKey = CACHE_KEY + '_' + currentMonth + '_' + capitalMode;
+            
+            // Try cache first for instant display
+            const cached = localStorage.getItem(cacheKey);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    currentData = parsed.data || [];
+                    currentSummary = parsed.summary || {};
+                    totalModeDayWise = parsed.totalModeDayWise || {};
+                    totalModeTrades = parsed.totalModeTrades || [];
+                    updateUI();
+                } catch(e) {}
+            }
+
+            // Fetch fresh data if online
+            if (navigator.onLine) {
+                await fetchData();
+            }
+            
+            showLoading(false);
+        }
+
+        async function fetchData() {
+            const month = currentMonth;
+            const capitalMode = document.getElementById('capitalMode')?.value || 'TOTAL';
+            
+            try {
+                // Fetch selected mode summary
+                const summaryRes = await fetch(`${APPS_SCRIPT_URL}?action=summary&month=${month}&capitalMode=${capitalMode}`);
+                const summary = await summaryRes.json();
+                
+                if (!summary.success) throw new Error(summary.error);
+                
+                // ALWAYS fetch TOTAL summary for stable percentage calculation
+                const totalSummaryRes = await fetch(`${APPS_SCRIPT_URL}?action=summary&month=${month}&capitalMode=TOTAL`);
+                const totalSummary = await totalSummaryRes.json();
+                
+                if (!totalSummary.success) throw new Error(totalSummary.error);
+                
+                totalModeDayWise = totalSummary.dayWise || {};
+                
+                // Fetch total mode trades for percentage calculation
+                const totalTradesRes = await fetch(`${APPS_SCRIPT_URL}?month=${month}&capitalMode=TOTAL`);
+                const totalTrades = await totalTradesRes.json();
+                
+                if (totalTrades.success) {
+                    totalModeTrades = totalTrades.data || [];
+                }
+                
+                // Fetch trades (selected mode)
+                const tradesRes = await fetch(`${APPS_SCRIPT_URL}?month=${month}&capitalMode=${capitalMode}`);
+                const trades = await tradesRes.json();
+                
+                if (!trades.success) throw new Error(trades.error);
+                
+                currentSummary = summary;
+                currentData = trades.data || [];
+                filteredTrades = [...currentData];
+                
+                // Cache data
+                const cacheKey = CACHE_KEY + '_' + month + '_' + capitalMode;
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    data: currentData,
+                    summary: currentSummary,
+                    totalModeDayWise: totalModeDayWise,
+                    totalModeTrades: totalModeTrades,
+                    timestamp: Date.now()
+                }));
+                
+                updateUI();
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                if (currentData.length === 0) {
+                    alert('Failed to load data. Please check connection.');
+                }
+            }
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('spinning');
+            fetchData().then(() => {
+                setTimeout(() => btn.classList.remove('spinning'), 500);
+            });
+        }
+
+        function reloadWithCapitalMode() {
+            loadData();
+        }
+
+        // UI Updates
+        function updateUI() {
+            updateStats();
+            updateCalendar();
+            updateIndexList();
+            updateTradesList();
+            updateFilters();
+            if (document.getElementById('view-analytics').classList.contains('active')) {
+                updateCharts();
+            }
+        }
+
+        function updateStats() {
+            const s = currentSummary;
+            if (!s || s.totalTrades === 0) return;
+
+            const pnlEl = document.getElementById('stat-pnl');
+            const pnl = parseFloat(s.totalFinalPnl) || 0;
+            pnlEl.textContent = formatCurrency(pnl);
+            pnlEl.className = 'stat-value ' + (pnl >= 0 ? 'positive' : 'negative');
+            
+            // Apply glow effect
+            const monthDisplay = document.getElementById('calendarMonth');
+            if (pnl > 0) {
+                monthDisplay.classList.add('profit-glow');
+            } else {
+                monthDisplay.classList.remove('profit-glow');
+            }
+            
+            document.getElementById('stat-winrate').textContent = (s.winRate || 0) + '% Win Rate';
+            document.getElementById('stat-trades').textContent = s.totalTrades || 0;
+            document.getElementById('stat-avg').textContent = formatCurrency(s.avgTrade) + ' avg';
+            document.getElementById('stat-charges').textContent = formatCurrency(s.totalCharges);
+            
+            if (s.bestDay) {
+                document.getElementById('stat-best').textContent = formatCurrency(s.bestDay.pnl);
+                document.getElementById('stat-best-date').textContent = formatDateNice(s.bestDay.date);
+            }
+        }
+
+        function updateCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const selectedIdx = document.getElementById('calendarIndexFilter').value;
+            
+            const monthNum = currentMonthIndex;
+            const daysInMonth = new Date(currentYear, monthNum + 1, 0).getDate();
+            const firstDay = new Date(currentYear, monthNum, 1).getDay();
+            
+            const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            let html = days.map(d => `<div class="day-label">${d}</div>`).join('');
+            
+            for (let i = 0; i < firstDay; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${currentYear}-${String(monthNum + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                const jsDate = new Date(dateStr);
+                const dayOfWeek = jsDate.getDay();
+                
+                const holidayInfo = marketHolidays[dateStr];
+                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+                // Holiday OR Weekend
+                if (holidayInfo || isWeekend) {
+
+                    const icon = holidayInfo
+                        ? holidayInfo.icon
+                        : (dayOfWeek === 0 ? "🌞" : "🌴");
+
+                    const label = holidayInfo
+                        ? holidayInfo.name
+                        : (dayOfWeek === 0 ? "Sunday" : "Saturday");
+
+                    html += `
+                        <div class="calendar-day bg-gray-800/30 border border-yellow-500/30 text-gray-300">
+                            <div class="text-[11px]">${day}</div>
+                            <div class="text-lg">${icon}</div>
+                            <div class="text-[9px] text-center leading-tight">
+                                ${label}
+                            </div>
+                        </div>
+                    `;
+                    continue;
+                }
+
+                // if (holidayInfo || isWeekend) {
+
+                //     const icon = holidayInfo
+                //         ? holidayInfo.icon
+                //         : (dayOfWeek === 0 ? "🌞" : "🌴");
+
+                //     const tooltip = holidayInfo
+                //         ? holidayInfo.name
+                //         : (dayOfWeek === 0 ? "Sunday" : "Saturday");
+
+                //     html += `
+                //         <div class="calendar-day bg-gray-800/30 border border-yellow-500/30 relative"
+                //              title="${tooltip}">
+                             
+                //             <div class="absolute top-1 right-1 text-sm">
+                //                 ${icon}
+                //             </div>
+
+                //             <div class="text-xl font-bold">
+                //                 ${day}
+                //             </div>
+                //         </div>
+                //     `;
+                //     continue;
+                // }
+                
+                // Calculate PnL for current mode
+                let dayPnl = 0;
+                if (selectedIdx === 'ALL') {
+                    dayPnl = currentData
+                        .filter(t => t.date === dateStr)
+                        .reduce((sum, t) => sum + t.finalPnl, 0);
+                } else {
+                    dayPnl = currentData
+                        .filter(t => t.date === dateStr && t.idx === selectedIdx)
+                        .reduce((sum, t) => sum + t.finalPnl, 0);
+                }
+                
+                if (dayPnl !== 0) {
+                    const heatClass = getHeatmapClass(dayPnl);
+                    const pnlText = formatCompactPnL(dayPnl);
+                    
+                    // Calculate capital
+                    let capital;
+                    if (selectedIdx === 'ALL') {
+                        const tradedIndices = new Set(
+                            totalModeTrades
+                                .filter(t => t.date === dateStr)
+                                .map(t => t.idx)
+                        );
+                        capital = tradedIndices.size * CAPITAL_PER_INDEX;
+                    } else {
+                        capital = CAPITAL_PER_INDEX;
+                    }
+                    
+                    // Percentage ALWAYS from TOTAL mode
+                    let percentBasePnl = 0;
+                    if (selectedIdx === 'ALL') {
+                        const totalDayData = totalModeDayWise[dateStr];
+                        percentBasePnl = totalDayData ? totalDayData.pnl : 0;
+                    } else {
+                        percentBasePnl = totalModeTrades
+                            .filter(t => t.date === dateStr && t.idx === selectedIdx)
+                            .reduce((sum, t) => sum + t.finalPnl, 0);
+                    }
+                    
+                    const percent = capital > 0 ? ((percentBasePnl / capital) * 100).toFixed(2) : 0;
+                    
+                    html += `
+                        <div class="calendar-day ${heatClass}" onclick="showDayDetail('${dateStr}')">
+                            <span class="day-num">${day}</span>
+                            <span class="day-pnl">${pnlText}</span>
+                            <span class="day-percent">${percent > 0 ? '+' : ''}${percent}%</span>
+                        </div>
+                    `;
+                } else {
+                    html += `<div class="calendar-day"><span class="day-num">${day}</span></div>`;
+                }
+            }
+            
+            grid.innerHTML = html;
+            document.getElementById('calendarMonth').textContent = `${currentMonth} ${currentYear}`;
+        }
+
+        function getHeatmapClass(pnl) {
+            if (pnl > 40000) return 'heat-high-pos';
+            if (pnl > 20000) return 'heat-med-pos';
+            if (pnl > 0) return 'heat-low-pos';
+            if (pnl === 0) return 'heat-zero';
+            if (pnl > -15000) return 'heat-low-neg';
+            if (pnl > -25000) return 'heat-med-neg';
+            return 'heat-high-neg';
+        }
+
+        function formatCompactPnL(value) {
+            const abs = Math.abs(value);
+            if (abs >= 100000) return (value / 100000).toFixed(2) + 'L';
+            if (abs >= 1000) return (value / 1000).toFixed(1) + 'K';
+            return value.toFixed(0);
+        }
+
+        function updateIndexList() {
+            const container = document.getElementById('indexList');
+            const indices = currentSummary.idxWise || {};
+            
+            container.innerHTML = Object.entries(indices).map(([idx, data]) => {
+                const winRate = data.trades > 0 ? ((data.wins / data.trades) * 100).toFixed(0) : 0;
+                const pnlClass = data.pnl >= 0 ? 'positive' : 'negative';
+                const name = INDEX_NAME_MAP[idx] || idx;
+                
+                return `
+                    <div class="index-item fade-in">
+                        <div>
+                            <div class="index-name">${name}</div>
+                            <div class="index-count">${data.trades} trades • ${winRate}% WR</div>
+                        </div>
+                        <div class="index-stats">
+                            <div class="index-pnl ${pnlClass}">${formatCurrency(data.pnl)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateTradesList() {
+            const container = document.getElementById('tradesList');
+            const search = document.getElementById('searchScript').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            const idx = document.getElementById('tradeIndexFilter').value;
+            
+            let filtered = currentData;
+            if (search) filtered = filtered.filter(t => t.script.toLowerCase().includes(search));
+            if (status) filtered = filtered.filter(t => t.status === status);
+            if (idx) filtered = filtered.filter(t => t.idx === idx);
+            
+            container.innerHTML = filtered.slice(0, 100).map(t => `
+                <div class="trade-item ${t.status.toLowerCase()} fade-in">
+                    <div class="trade-header">
+                        <span class="trade-script">${t.script}</span>
+                        <span class="trade-pnl ${t.finalPnl >= 0 ? 'positive' : 'negative'}">${formatCurrency(t.finalPnl)}</span>
+                    </div>
+                    <div class="trade-details">
+                        <div>Date<span>${formatDateNice(t.date)}</span></div>
+                        <div>Time<span>${t.buyTime}</span></div>
+                        <div>Qty<span>${t.quantity}</span></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateFilters() {
+            const indices = [...new Set(currentData.map(t => t.idx).filter(Boolean))];
+            const indexTotals = {};
+            currentData.forEach(t => {
+                if (!indexTotals[t.idx]) indexTotals[t.idx] = 0;
+                indexTotals[t.idx] += t.finalPnl;
+            });
+            
+            const buildOptions = (id, allLabel) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const currentVal = el.value;
+                el.innerHTML = `<option value="${allLabel === 'ALL' ? 'ALL' : ''}">${allLabel}</option>` +
+                    indices.map(idx => {
+                        const pnl = indexTotals[idx] || 0;
+                        const percent = ((pnl / CAPITAL_PER_INDEX) * 100).toFixed(2);
+                        const name = INDEX_NAME_MAP[idx] || idx;
+                        return `<option value="${idx}">${name} | ${formatCurrency(pnl)} | ${percent > 0 ? '+' : ''}${percent}%</option>`;
+                    }).join('');
+                el.value = currentVal;
+            };
+            
+            buildOptions('calendarIndexFilter', 'ALL');
+            buildOptions('tradeIndexFilter', 'All Indices');
+            buildOptions('analyticsIndexFilter', 'ALL');
+        }
+
+        function filterTrades() {
+            updateTradesList();
+        }
+
+        function showDayDetail(dateStr) {
+            const selectedIdx = document.getElementById('calendarIndexFilter').value;
+            const dayTrades = currentData.filter(t => t.date === dateStr && (selectedIdx === 'ALL' || t.idx === selectedIdx));
+            
+            if (dayTrades.length === 0) return;
+            
+            const totalPnl = dayTrades.reduce((sum, t) => sum + t.finalPnl, 0);
+            const wins = dayTrades.filter(t => t.finalPnl > 0).length;
+            
+            document.getElementById('modal-date').textContent = formatDateNice(dateStr);
+            document.getElementById('modal-summary').textContent = `${dayTrades.length} trades • P&L: ${formatCurrency(totalPnl)} • Wins: ${wins}/${dayTrades.length}`;
+            
+            document.getElementById('modal-trades').innerHTML = dayTrades.map(t => `
+                <div class="trade-item ${t.status.toLowerCase()}">
+                    <div class="trade-header">
+                        <span class="trade-script">${t.script}</span>
+                        <span class="trade-pnl ${t.finalPnl >= 0 ? 'positive' : 'negative'}">${formatCurrency(t.finalPnl)}</span>
+                    </div>
+                    <div class="trade-details">
+                        <div>Entry<span>${t.buy}</span></div>
+                        <div>Exit<span>${t.sell}</span></div>
+                        <div>Charges<span>${formatCurrency(t.charges)}</span></div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('dayModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('dayModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function closeModalOnBackground(e) {
+            if (e.target === document.getElementById('dayModal')) closeModal();
+        }
+
+        function selectMonth(month, index) {
+            currentMonth = month;
+            currentMonthIndex = index;
+            
+            document.querySelectorAll('.month-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            
+            loadData();
+        }
+
+        function changeMonth(direction) {
+            let newIndex = currentMonthIndex + direction;
+            let newYear = currentYear;
+
+            // Handle year rollover backward
+            if (newIndex < 0) {
+                newIndex = 11;
+                newYear -= 1;
+            }
+
+            // Handle year rollover forward
+            if (newIndex > 11) {
+                newIndex = 0;
+                newYear += 1;
+            }
+
+            // Prevent future months
+            if (
+                newYear > currentRealYear ||
+                (newYear === currentRealYear && newIndex > currentRealMonth)
+            ) return;
+
+            currentYear = newYear;
+
+            const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+            const monthDisplay = document.getElementById('calendarMonth');
+            monthDisplay.classList.remove('month-active');
+            monthDisplay.classList.add(direction > 0 ? 'month-slide-right' : 'month-slide-left');
+
+            setTimeout(() => {
+                selectMonth(monthNames[newIndex], newIndex);
+                monthDisplay.classList.remove('month-slide-left', 'month-slide-right');
+                monthDisplay.classList.add('month-active');
+            }, 200);
+        }
+
+        function switchView(view, btn) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById('view-' + view).classList.add('active');
+            if (btn) btn.classList.add('active');
+            
+            if (view === 'analytics') setTimeout(updateCharts, 100);
+        }
+
+        function updateCharts() {
+            const selectedIdx = document.getElementById('analyticsIndexFilter')?.value;
+            dataForCharts = selectedIdx && selectedIdx !== 'ALL' ? currentData.filter(t => t.idx === selectedIdx) : currentData;
+            
+            updateEquityChart();
+            updateDistributionChart();
+            updateHourlyChart();
+        }
+
+        function updateEquityChart() {
+            const ctx = document.getElementById('equityChart').getContext('2d');
+            if (charts.equity) charts.equity.destroy();
+            
+            const capitalMode = document.getElementById('capitalMode').value;
+            
+            let cumulative = 0;
+            const equityData = dataForCharts.map(t => {
+                cumulative += t.finalPnl;
+                return cumulative;
+            });
+            
+            charts.equity = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dataForCharts.map(t => t.date.slice(5)),
+                    datasets: [{
+                        data: equityData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.1)',
+                        borderWidth: 2,
+                        fill: {
+                            target: 'origin',
+                            above: 'rgba(59,130,246,0.15)'
+                        },
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    animation: {
+                        duration: 600,
+                        easing: 'easeOutQuart'
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: '#1f2937' }, 
+                            ticks: { 
+                                color: '#6b7280', 
+                                callback: v => capitalMode === 'COMPOUND' ? (v / 100000).toFixed(2) + 'L' : '₹' + (v/1000).toFixed(0) + 'k' 
+                            } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateDistributionChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            if (charts.distribution) charts.distribution.destroy();
+            
+            const wins = dataForCharts.filter(t => t.status === 'WIN').length;
+            const losses = dataForCharts.filter(t => t.status === 'LOSS').length;
+            const total = wins + losses;
+            
+            const winPercent = total ? ((wins / total) * 100).toFixed(0) : 0;
+            
+            const centerTextPlugin = {
+                id: 'centerText',
+                beforeDraw(chart) {
+                    const { width, height, ctx } = chart;
+                    ctx.restore();
+                    const fontSize = (height / 8).toFixed(2);
+                    ctx.font = `bold ${fontSize}px Inter`;
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = winPercent >= 50 ? "#10b981" : "#ef4444";
+                    ctx.textBaseline = "middle";
+                    ctx.fillStyle = winPercent >= 50 ? "#10b981" : "#ef4444";
+                    const text = winPercent + '%';
+                    const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                    const textY = height / 2;
+                    ctx.fillText(text, textX, textY);
+                    ctx.save();
+                }
+            };
+            
+            charts.distribution = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Wins', 'Losses'],
+                    datasets: [{
+                        data: [wins, losses],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#9ca3af', boxWidth: 12 } }
+                    }
+                },
+                plugins: [centerTextPlugin]
+            });
+        }
+
+        function updateHourlyChart() {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            if (charts.hourly) charts.hourly.destroy();
+            
+            const capitalMode = document.getElementById('capitalMode').value;
+            
+            const hourly = {};
+            dataForCharts.forEach(t => {
+                if (!t.buyTime) return;
+                const hour = t.buyTime.split(':')[0];
+                if (!hourly[hour]) hourly[hour] = 0;
+                hourly[hour] += t.finalPnl;
+            });
+            
+            const hours = Object.keys(hourly).sort();
+            
+            charts.hourly = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours.map(h => h + ':00'),
+                    datasets: [{
+                        data: hours.map(h => hourly[h]),
+                        backgroundColor: hours.map(h => hourly[h] >= 0 ? '#10b981' : '#ef4444'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#6b7280', font: { size: 10 } } },
+                        y: { 
+                            grid: { color: '#1f2937' }, 
+                            ticks: { 
+                                color: '#6b7280', 
+                                callback: v => capitalMode === 'COMPOUND' ? (v / 100000).toFixed(2) + 'L' : '₹' + v 
+                            } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+        }
+
+        function formatCurrency(val) {
+            if (!val) return '₹0';
+            const num = parseFloat(val);
+            if (Math.abs(num) >= 100000) return '₹' + (num/100000).toFixed(2) + 'L';
+            if (Math.abs(num) >= 1000) return '₹' + (num/1000).toFixed(1) + 'k';
+            return '₹' + num.toFixed(0);
+        }
+
+        function formatDateNice(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        }
+        function switchView(view, btn) {
+            document.querySelectorAll('.view').forEach(v => {
+                v.style.opacity = 0;
+                setTimeout(() => v.classList.remove('active'), 150);
+            });
+
+            setTimeout(() => {
+                const target = document.getElementById('view-' + view);
+                target.classList.add('active');
+                target.style.opacity = 1;
+            }, 150);
+
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+
+            if (view === 'analytics') setTimeout(updateCharts, 200);
+        }
+
+        function updateClock() {
+            const now = new Date();
+
+            const ist = new Date(
+                now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+            );
+
+            const h = String(ist.getHours()).padStart(2, '0');
+            const m = String(ist.getMinutes()).padStart(2, '0');
+            const s = String(ist.getSeconds()).padStart(2, '0');
+
+            document.querySelector(".hours-minutes").textContent = `${h}:${m}`;
+            document.querySelector(".seconds").textContent = `:${s}`;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        const marketHolidays = {
+            "2026-01-15": { icon: "🗳️", name: "Municipal Corporation Election" },
+            "2026-01-26": { icon: "🇮🇳", name: "Republic Day" },
+            "2026-03-03": { icon: "🎨", name: "Holi" },
+            "2026-03-26": { icon: "🏹", name: "Shri Ram Navami" },
+            "2026-03-31": { icon: "🕉️", name: "Shri Mahavir Jayanti" },
+            "2026-04-03": { icon: "✝️", name: "Good Friday" },
+            "2026-04-14": { icon: "📘", name: "Dr. B.R. Ambedkar Jayanti" },
+            "2026-05-01": { icon: "⚙️", name: "Maharashtra Day" },
+            "2026-05-28": { icon: "🕌", name: "Bakri Id" },
+            "2026-06-26": { icon: "🌙", name: "Muharram" },
+            "2026-09-14": { icon: "🐘", name: "Ganesh Chaturthi" },
+            "2026-10-02": { icon: "🕊️", name: "Gandhi Jayanti" },
+            "2026-10-20": { icon: "🏹", name: "Dussehra" },
+            "2026-11-10": { icon: "🪔", name: "Diwali" },
+            "2026-11-24": { icon: "☬", name: "Guru Nanak Jayanti" },
+            "2026-12-25": { icon: "🎄", name: "Christmas" }
+        };
+
+        function getHolidayInfo() {
+            const now = new Date();
+
+            const istDate = new Date(
+                now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+            );
+
+            const yyyy = istDate.getFullYear();
+            const mm = String(istDate.getMonth() + 1).padStart(2, "0");
+            const dd = String(istDate.getDate()).padStart(2, "0");
+
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            // Sunday = 0, Saturday = 6
+            if (istDate.getDay() === 0)
+                return { icon: "🌞", name: "Sunday" };
+
+            if (istDate.getDay() === 6)
+                return { icon: "🌴", name: "Saturday" };
+
+            return marketHolidays[dateStr] || null;
+        }
+
+        function updateHolidayBanner() {
+            const holiday = getHolidayInfo();
+            const banner = document.getElementById("holiday-banner");
+
+            if (holiday) {
+                banner.innerHTML = `${holiday.icon} ${holiday.name}`;
+                banner.style.display = "block";
+            } else {
+                banner.style.display = "none";
+            }
+        }
+
+        updateHolidayBanner();
+    </script>
+</body>
+</html>
