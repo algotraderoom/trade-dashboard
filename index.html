@@ -181,27 +181,25 @@ body{
 
 <script>
 
-function isMobile(){
-
-    return (
-        /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent)
-        || window.innerWidth <= 768
-    );
+function isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 
-setTimeout(()=>{
+window.addEventListener("pageshow", function () {
 
-    if(isMobile()){
+    requestAnimationFrame(() => {
 
-        window.location.replace("Mobile.html");
+        requestAnimationFrame(() => {
 
-    }else{
+            location.replace(
+                isMobile() ? "Mobile.html" : "Desktop.html"
+            );
 
-        window.location.replace("Desktop.html");
+        });
 
-    }
+    });
 
-},1200);
+});
 
 </script>
 
